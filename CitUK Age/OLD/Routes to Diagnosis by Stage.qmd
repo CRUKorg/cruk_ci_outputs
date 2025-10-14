@@ -1,0 +1,170 @@
+```{r setup}
+library(tidyverse, quietly = TRUE)
+RtD <- read_csv('CRUK_EDHub_RoutesToDiagnosisByStage_DataTable_2025-01-14.csv',
+                show_col_types = FALSE) %>%
+  janitor::clean_names()
+
+
+```
+
+```{r}
+#rounding function taken from SST hub
+CRUKRoundingText <- function(number){
+  
+  number <-  ifelse( number >= 100000000,
+                     ifelse(number - floor(number / 1000000) * 1000000 == 500,
+                            number + 1,number),
+                     ifelse( number >= 10000000,
+                             ifelse(number - floor(number / 100000) * 100000 == 500,
+                                    number + 1,number),
+                             ifelse( number >= 1000000,
+                                     ifelse(number - floor(number / 10000) * 10000 == 500,
+                                            number + 1,number),
+                                     ifelse( number >= 100000,
+                                             ifelse(number - floor(number / 1000) * 1000 == 500,
+                                                    number + 1,number),
+                                             ifelse(number >= 10000,
+                                                    ifelse(number - floor(number / 100) * 100 == 50,
+                                                           number + 1,
+                                                           number),
+                                                    ifelse(number >= 1000,
+                                                           ifelse(number - floor(number / 100) * 100 == 50,
+                                                                  number + 1,
+                                                                  number),
+                                                           ifelse(number >= 100,
+                                                                  ifelse(number - floor(number / 10) * 10 == 5,
+                                                                         number + 0.01,
+                                                                         number),
+                                                                  ifelse(
+                                                                    number >= 10,
+                                                                    ifelse(number - floor(number / 1) * 1 == 0.5,
+                                                                           number + 0.0001,
+                                                                           number),
+                                                                    number
+                                                                  ))))))))
+  
+  numbertext <- ifelse(number >= 100000000,
+                       ifelse(number - floor(number/1000000)*1000000 >= 900,
+                              paste0("around ", format(signif(number, digits = 3), big.mark=",", scientific = FALSE)),
+                              ifelse(number - floor(number/1000000)*1000000 >= 700,
+                                     paste0("nearly ", format(signif(number, digits = 3), big.mark=",", scientific = FALSE)),
+                                     ifelse(number - floor(number/1000000)*1000000 >= 200,
+                                            paste0("more than ", format(signif(floor(number/100000)*100000, digits = 3), big.mark=",", scientific = FALSE)),
+                                            paste0("around ",    format(signif(floor(number/100000)*100000, digits = 3), big.mark=",", scientific = FALSE))))),
+                       ifelse(number >= 10000000,
+                              ifelse(number - floor(number/100000)*100000 >= 900,
+                                     paste0("around ", format(signif(number, digits = 3), big.mark=",", scientific = FALSE)),
+                                     ifelse(number - floor(number/100000)*100000 >= 700,
+                                            paste0("nearly ", format(signif(number, digits = 3), big.mark=",", scientific = FALSE)),
+                                            ifelse(number - floor(number/100000)*100000 >= 200,
+                                                   paste0("more than ", format(signif(floor(number/100000)*100000, digits = 3), big.mark=",", scientific = FALSE)),
+                                                   paste0("around ",    format(signif(floor(number/100000)*100000, digits = 3), big.mark=",", scientific = FALSE))))),
+                              ifelse(number >= 1000000,
+                                     ifelse(number - floor(number/10000)*10000 >= 900,
+                                            paste0("around ", format(signif(number, digits = 3), big.mark=",", scientific = FALSE)),
+                                            ifelse(number - floor(number/10000)*10000 >= 700,
+                                                   paste0("nearly ", format(signif(number, digits = 3), big.mark=",", scientific = FALSE)),
+                                                   ifelse(number - floor(number/10000)*10000 >= 200,
+                                                          paste0("more than ", format(signif(floor(number/10000)*10000, digits = 3), big.mark=",", scientific = FALSE)),
+                                                          paste0("around ",    format(signif(floor(number/10000)*10000, digits = 3), big.mark=",", scientific = FALSE))))),
+                                     ifelse(number >= 100000,
+                                            ifelse(number - floor(number/1000)*1000 >= 900,
+                                                   paste0("around ", format(signif(number, digits = 3), big.mark=",", scientific = FALSE)),
+                                                   ifelse(number - floor(number/1000)*1000 >= 700,
+                                                          paste0("nearly ", format(signif(number, digits = 3), big.mark=",", scientific = FALSE)),
+                                                          ifelse(number - floor(number/1000)*1000 >= 200,
+                                                                 paste0("more than ", format(signif(floor(number/1000)*1000, digits = 3), big.mark=",", scientific = FALSE)),
+                                                                 paste0("around ",    format(signif(floor(number/1000)*1000, digits = 3), big.mark=",", scientific = FALSE))))),
+                                            ifelse(number >= 10000,
+                                                   paste0("around ", format((round(number/100, 0)*100), big.mark=",")),
+                                                   ifelse(number >= 1000,
+                                                          paste0("around ", format((round(number/100, 0)*100), big.mark=",")),
+                                                          ifelse(number >= 100,
+                                                                 paste0("around ", round(number/10, 0)*10),
+                                                                 ifelse(number >= 10,
+                                                                        paste0("around ", round(number/5, 0)*5),
+                                                                        ifelse(number >= 7.5,
+                                                                               paste0("around 10"),
+                                                                               ifelse(number >= 5,
+                                                                                      paste0("around 5"),
+                                                                                      paste0("fewer than 5")))))))))))
+  
+  
+  return(numbertext)
+}
+```
+
+# England
+
+```{r}
+England <- RtD %>%
+  filter(country == 'England',
+         year == '2019',
+         cancer_site == 'All Cancers Combined',
+         stage == 'Stage I' | stage == 'Stage IV') %>%
+  select(-percent_of_all_routes) %>%
+  pivot_wider(names_from = c(stage),
+              values_from = c(percent_of_known_routes, count),
+              names_sep = "_") %>%
+  janitor::clean_names()
+
+England <- England %>%
+  mutate(statement = paste0(
+    'In England, for people diagnosed with cancer ', 
+    case_when(route_to_diagnosis == 'Screening' ~ 'via national screening programmes',
+              route_to_diagnosis == 'Two Week Wait' ~ 'by urgent GP two-week wait reeferral for suspected cancer symptoms',
+              route_to_diagnosis == 'GP Referral' ~ 'by routine or urgent GP referral (non-two-week wait)',
+              route_to_diagnosis == 'Emergency Presentation' ~ 'in an emergency, via emergency GP transfer to hospital as a hospital patient or via A&E',
+              route_to_diagnosis == 'Other' ~ 'via other routes',
+              .default = paste0('via ', str_to_lower(route_to_diagnosis))), 
+    ', ', 
+    round(percent_of_known_routes_stage_i * 100,1), '% (', CRUKRoundingText(count_stage_i), ') of cancers were diagnosed at stage I compared to ',
+    round(percent_of_known_routes_stage_iv * 100, 1), 
+    '% (', CRUKRoundingText(count_stage_iv), ') at stage IV.'
+  ),
+  source = 'NDRS, NHS England',
+  source_link = 'https://nhsd-ndrs.shinyapps.io/routes_to_diagnosis/')
+```
+
+# Northern Ireland
+
+```{r}
+NIreland <- RtD %>%
+  filter(country == 'Northern Ireland',
+         year == '2018-2020',
+         cancer_site == 'All Cancers Combined',
+         stage == 'Stage I' | stage == 'Stage IV') %>%
+  select(-percent_of_all_routes) %>%
+  pivot_wider(names_from = c(stage),
+              values_from = c(percent_of_known_routes, count),
+              names_sep = "_") %>%
+  janitor::clean_names()
+
+NIreland <- NIreland %>%
+  mutate(statement = paste0(
+    'In Northern Ireland, for people diagnosed with cancer ', 
+    case_when(route_to_diagnosis == 'Screening' ~ 'via national screening programmes',
+              route_to_diagnosis == 'Two Week Wait' ~ 'by urgent GP two-week wait reeferral for suspected cancer symptoms',
+              route_to_diagnosis == 'GP Referral' ~ 'by routine or urgent GP referral (non-two-week wait)',
+              route_to_diagnosis == 'Emergency Presentation' ~ 'in an emergency, via emergency GP transfer to hospital as a hospital patient or via A&E',
+              route_to_diagnosis == 'Unknown' ~ 'via unknown routes',
+              route_to_diagnosis == 'Other' ~ 'via other routes',
+              .default = paste0('via ', str_to_lower(route_to_diagnosis))), 
+    ', ', 
+    round(percent_of_known_routes_stage_i * 100,1), '% (', CRUKRoundingText(count_stage_i), ') of cancers were diagnosed at stage I compared to ',
+    round(percent_of_known_routes_stage_iv * 100, 1), 
+    '% (', CRUKRoundingText(count_stage_iv), ') at stage IV.'
+  ),
+  source = "Northern Ireland Cancer Registry, Queen's University Belfast",
+  source_link = 'https://www.qub.ac.uk/research-centres/nicr/FileStore/PDF/NIrelandReports/Routes%20to%20diagnosis%20report%202024-03-12_FINAL-compressed.pdf')
+```
+
+# Statements
+
+```{r}
+RtDStatements <- rbind(England, NIreland)
+paste(unique(RtDStatements$statement))
+paste0(RtDStatements$route_to_diagnosis, ' - Stage I ', round(RtDStatements$percent_of_known_routes_stage_i * 100, 1), '% (', CRUKRoundingText(RtDStatements$count_stage_i), ')  - Stage IV ', round(RtDStatements$percent_of_known_routes_stage_iv * 100, 1), '% ', CRUKRoundingText(RtDStatements$count_stage_iv), ' cases, (', RtDStatements$year, ')')
+
+write_csv(RtDStatements, 'CitUK RtD Statements.csv')
+```

@@ -1,0 +1,1395 @@
+---
+title: "Net survival by route and age"
+author: "Matt Grant"
+format: 
+  html: 
+    echo: false
+    warning: false
+    self-contained: true
+    grid:
+      sidebar-width: 300px
+      body-width: 1100px
+      margin-width: 300px
+      gutter-width: 1.5em
+    fig-height: 6
+    mainfont: Poppins
+    css: Styles.css
+    toc: true
+execute: 
+  cache: true  
+editor: visual
+---
+
+```{r setup}
+#| echo: false
+#| warning: false
+library(tidyverse)
+library(plotly)
+```
+
+# England 1 and 5 year survival
+
+```{r England_data}
+data <- openxlsx::read.xlsx("c:/RProjects/CitUK Age - Survival by route and age.xlsx")
+
+route_colors <- c(
+  "1 Screening"              = "#374c80", 
+  "2 USC"                    = "#7a5195",
+  "3 GP referral"            = "#bc5090", 
+  "4 Other outpatient"       = "#ef5675", 
+  "5 Inpatient elective"     = "#ff764a", 
+  "6 Emergency presentation" = "#ffa600", 
+  "8 Unknown route"          = "#bbbbbb", 
+  "All routes"               = "#003f5c"  
+)
+
+age_colors <- c(
+  "15 to 54" = "#BCE4FA", 
+  "55 to 74" = "#009cee",
+  "75+"      = "#005b85",
+  "All ages" = "#00007e"
+)
+```
+
+## Bowel cancer (Colorectal)
+
+Generally survival falls as people age. The benefit of screening is seemingly huge, with higher survival seen in anyone who is diagnosed via this route, and higher survival than younger groups who are diagnosed via a different route.
+
+5 year net survival when diagnosed via screening is 88.3% for 55 to 74 year olds and 90.3% for those over 75, higher than 5 year net survival by any diagnosis route for 15 to 54 year olds (where there may be no screening program available).
+
+```{r eng_bowel_route}
+#| fig-height: 6
+
+bowelData <- data %>%
+  filter(Site == "Colorectal") %>%
+  arrange(Route) %>%
+  mutate(
+    NewAge = case_when(
+      Age == "15 to 44" ~ "15 to 54",
+      Age == "45 to 54" ~ "15 to 54",
+      Age == "55 to 64" ~ "55 to 74",
+      Age == "65 to 74" ~ "55 to 74",
+      Age == "75 to 99" ~ "75+",
+      .default = Age
+    ),
+    SurvivalCount = Patients * (Survival / 100)
+  ) %>%
+  group_by(Site, Route, Gender, Length, NewAge) %>%
+  summarise(Patients = sum(Patients),
+            SurvivalCount = sum(SurvivalCount),
+            Survival = SurvivalCount / Patients * 100) %>%
+  rename(Age = NewAge) %>%
+  ungroup() 
+
+p <- plot_ly()
+
+for(route_val in unique(bowelData$Route)) {
+  for(length_val in unique(bowelData$Length)) {
+    filtered_data <- bowelData %>%
+      filter(Length == length_val, Route == route_val)
+    
+    # Create different opacity/tint based on length
+    alpha_val <- ifelse(length_val == "1-year", 0.4, 1)  # Adjust based on your length values
+    
+    p <- p %>% add_bars(
+      data = filtered_data,
+      y = ~Survival,
+      x = ~Age, 
+      name = paste(route_val, length_val, sep = " - "),
+      legendgroup = route_val,  # Groups legend entries by route
+      offsetgroup = route_val,  # Groups bars together
+      color = I(adjustcolor(route_colors[route_val], alpha.f = alpha_val)),
+      marker = list(color = adjustcolor(route_colors[route_val], alpha.f = alpha_val))
+    )
+  }
+}
+
+p %>% 
+   layout(
+    barmode = 'group',
+    showlegend = TRUE, 
+    yaxis = list(
+      title = "Net survival (%)",
+      zeroline = F,
+      showgrid = T, 
+      titlefont = list(family = "Poppins", color = "#000000", size = 18),
+      tickfont = list(family = "Poppins", color= "#000000", size= 14)),
+    xaxis = list(
+      title = "",
+      zeroline = F,
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      titlefont = list(family = "Poppins", color = "#000000", size = 18)),
+    title = list(text = "Bowel survival by age", 
+                 font = list(family = "Progress Medium", color = "#000000",size = 28),
+                 x = 0.01),
+    legend = list(font = list(family = "Poppins")),
+    margin = list(t = 75, r = 300) 
+  )
+```
+
+Being diagnosed via a later pathway route has a bigger negative impact on older people than younger.
+
+When bowel cancer is diagnosed via USC, 5 year net survival is 68.1% in 15 to 54 year olds compared to 66.8% in 55 to 75 year olds and 60.8% in people aged over 75. When diagnosed via emergency presentation, the survival gap between these 3 groups widens, with 15 to 54 year olds having a 5 year net survival of 49.7% compared to 34.7% in 55 to 74 year olds and falling to 18.1% in people aged over 75.
+
+The biggest change in net survival from 1 to 5 years is seen in the "Other outpatient" diagnosis route, with a fall in survival of 23.8 percentage points across all ages. The largest age group decrease is seen in the over 75s where there is a 26.2 percentage point change (compared to 22.3 percentage point drop in 55 to 74 and 20.3 percentage point drop in 15 to 54 year olds.
+
+```{r eng_bowel_age}
+bowelData <- data %>%
+  filter(Site == "Colorectal", 
+         Age != "15 to 54") %>%
+  arrange(Age) %>%
+  mutate(
+    NewAge = case_when(
+      Age == "15 to 44" ~ "15 to 54",
+      Age == "45 to 54" ~ "15 to 54",
+      Age == "55 to 64" ~ "55 to 74",
+      Age == "65 to 74" ~ "55 to 74",
+      Age == "75 to 99" ~ "75+",
+      .default = Age
+    ),
+    SurvivalCount = Patients * (Survival / 100)
+  ) %>%
+  group_by(Site, Route, Gender, Length, NewAge) %>%
+  summarise(Patients = sum(Patients),
+            SurvivalCount = sum(SurvivalCount),
+            Survival = SurvivalCount / Patients * 100) %>%
+  rename(Age = NewAge) %>%
+  ungroup() %>%
+  arrange(Age)
+
+BowelSurvDiff <- bowelData %>%
+  pivot_wider(names_from = Length, values_from = c(Survival, SurvivalCount)) %>%
+  mutate(SurvivalDiff = `Survival_1-year` - `Survival_5-year`)
+
+p <- plot_ly()
+
+for(age_val in unique(bowelData$Age)) {
+  for(length_val in unique(bowelData$Length)) {
+    filtered_data <- bowelData %>%
+      filter(Length == length_val, Age == age_val)
+    
+    # Create different opacity/tint based on length
+    alpha_val <- ifelse(length_val == "1-year", 0.4, 1)  # Adjust based on your length values
+    
+    p <- p %>% add_bars(
+      data = filtered_data,
+      
+      y = ~Survival,
+      x = ~Route, 
+      name = paste(age_val, length_val, sep = " - "),
+      legendgroup = age_val,  # Groups legend entries by route
+      offsetgroup = age_val,  # Groups bars together
+      color = I(adjustcolor(age_colors[age_val], alpha.f = alpha_val)),
+      marker = list(color = adjustcolor(age_colors[age_val], alpha.f = alpha_val))
+    ) 
+        
+    
+    
+  }
+  
+
+}
+
+p %>% 
+  layout(
+    barmode = 'group',
+    showlegend = TRUE, 
+    yaxis = list(
+      title = "Net survival (%)",
+      zeroline = F,
+      showgrid = T, 
+      titlefont = list(family = "Poppins", color = "#000000", size = 18),
+      tickfont = list(family = "Poppins", color= "#000000", size= 14)),
+    xaxis = list(
+      title = "",
+      zeroline = F,
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      titlefont = list(family = "Poppins", color = "#000000", size = 18)),
+    title = list(text = "Bowel survival by route", 
+                 font = list(family = "Progress Medium", color = "#000000",size = 28),
+                 x = 0.01),
+    legend = list(font = list(family = "Poppins")),
+    margin = list(t = 75, r = 300) 
+  )
+
+
+
+plot_ly(BowelSurvDiff) %>%
+  add_bars(x = ~Route,
+           y = ~SurvivalDiff, 
+           color = ~Age,
+           colors = age_colors) %>% 
+  layout(
+    barmode = 'group',
+    showlegend = TRUE, 
+    yaxis = list(
+      title = "1 and 5 year net survival\nchange (% points)",
+      zeroline = F,
+      showgrid = T, 
+      titlefont = list(family = "Poppins", color = "#000000", size = 18),
+      tickfont = list(family = "Poppins", color= "#000000", size= 14)),
+    xaxis = list(
+      title = "",
+      zeroline = F,
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      titlefont = list(family = "Poppins", color = "#000000", size = 18)),
+    title = list(text = "Difference between 1 and 5 year net survival by route and age<br><sup>Bowel cancer</sup>", 
+                 font = list(family = "Progress Medium", color = "#000000",size = 28),
+                 x = 0.01),
+    legend = list(font = list(family = "Poppins")),
+    margin = list(t = 75, r = 300) 
+  )
+      
+```
+
+## Breast
+
+Survival decreases as people age. Impact of screening is positive across all age groups.
+
+```{r eng_breast_route}
+breastData <- data %>%
+  filter(Site == "Breast") %>%
+  arrange(Age) %>%
+  mutate(
+    NewAge = case_when(
+      Age == "15 to 44" ~ "15 to 54",
+      Age == "45 to 54" ~ "15 to 54",
+      Age == "55 to 64" ~ "55 to 74",
+      Age == "65 to 74" ~ "55 to 74",
+      Age == "75 to 99" ~ "75+",
+      .default = Age
+    ),
+    SurvivalCount = Patients * (Survival / 100)
+  ) %>%
+  group_by(Site, Route, Gender, Length, NewAge) %>%
+  summarise(Patients = sum(Patients),
+            SurvivalCount = sum(SurvivalCount),
+            Survival = SurvivalCount / Patients * 100) %>%
+  rename(Age = NewAge) %>%
+  ungroup()
+
+
+p <- plot_ly()
+
+for(route_val in unique(breastData$Route)) {
+  for(length_val in unique(breastData$Length)) {
+    filtered_data <- breastData %>%
+      filter(Length == length_val, Route == route_val)
+    
+    # Create different opacity/tint based on length
+    alpha_val <- ifelse(length_val == "1-year", 0.4, 1)  # Adjust based on your length values
+    
+    p <- p %>% add_bars(
+      data = filtered_data,
+      
+      y = ~Survival,
+      x = ~Age, 
+      name = paste(route_val, length_val, sep = " - "),
+      legendgroup = route_val,  # Groups legend entries by route
+      offsetgroup = route_val,  # Groups bars together
+      color = I(adjustcolor(route_colors[route_val], alpha.f = alpha_val)),
+      marker = list(color = adjustcolor(route_colors[route_val], alpha.f = alpha_val))
+    )
+  }
+}
+
+p %>% 
+   layout(
+    barmode = 'group',
+    showlegend = TRUE, 
+    yaxis = list(
+      title = "Net survival (%)",
+      zeroline = F,
+      showgrid = T, 
+      titlefont = list(family = "Poppins", color = "#000000", size = 18),
+      tickfont = list(family = "Poppins", color= "#000000", size= 14)),
+    xaxis = list(
+      title = "", 
+      zeroline = F,
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      titlefont = list(family = "Poppins", color = "#000000", size = 18)),
+    title = list(text = "Breast survival by age", 
+                 font = list(family = "Progress Medium", color = "#000000",size = 28),
+                 x = 0.01),
+    legend = list(font = list(family = "Poppins")),
+    margin = list(t = 75, r = 300) 
+  )
+```
+
+Being diagnosed via later pathway routes has a bigger negative impact on older people than younger.
+
+```{r eng_breast_age}
+breastData <- data %>%
+  filter(Site == "Breast") %>%
+  arrange(Age) %>%
+  mutate(
+    NewAge = case_when(
+      Age == "15 to 44" ~ "15 to 54",
+      Age == "45 to 54" ~ "15 to 54",
+      Age == "55 to 64" ~ "55 to 74",
+      Age == "65 to 74" ~ "55 to 74",
+      Age == "75 to 99" ~ "75+",
+      .default = Age
+    ),
+    SurvivalCount = Patients * (Survival / 100)
+  ) %>%
+  group_by(Site, Route, Gender, Length, NewAge) %>%
+  summarise(Patients = sum(Patients),
+            SurvivalCount = sum(SurvivalCount),
+            Survival = SurvivalCount / Patients * 100) %>%
+  rename(Age = NewAge) %>%
+  ungroup() %>%
+  arrange(Age)
+
+p <- plot_ly()
+
+for(age_val in unique(breastData$Age)) {
+  for(length_val in unique(breastData$Length)) {
+    filtered_data <- breastData %>%
+      filter(Length == length_val, Age == age_val)
+    
+    # Create different opacity/tint based on length
+    alpha_val <- ifelse(length_val == "1-year", 0.4, 1)  # Adjust based on your length values
+    
+    p <- p %>% add_bars(
+      data = filtered_data,
+      
+      y = ~Survival,
+      x = ~Route, 
+      name = paste(age_val, length_val, sep = " - "),
+      legendgroup = age_val,  # Groups legend entries by route
+      offsetgroup = age_val,  # Groups bars together
+      color = I(adjustcolor(age_colors[age_val], alpha.f = alpha_val)),
+      marker = list(color = adjustcolor(age_colors[age_val], alpha.f = alpha_val))
+    )
+  }
+}
+
+p %>% 
+  layout(
+    barmode = 'group',
+    showlegend = TRUE, 
+    yaxis = list(
+      title = "Net survival (%)",
+      zeroline = F,
+      showgrid = T, 
+      titlefont = list(family = "Poppins", color = "#000000", size = 18),
+      tickfont = list(family = "Poppins", color= "#000000", size= 14)),
+    xaxis = list(
+      title = "",
+      zeroline = F,
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      titlefont = list(family = "Poppins", color = "#000000", size = 18)),
+    title = list(text = "Breast survival by route", 
+                 font = list(family = "Progress Medium", color = "#000000",size = 28),
+                 x = 0.01),
+    legend = list(font = list(family = "Poppins")),
+    margin = list(t = 75, r = 300) 
+  )
+  
+```
+
+## Prostate
+
+Survival for prostate is high if not diagnosed via emergency presentation route.
+
+```{r eng_prostate_route}
+prostateData <- data %>%
+  filter(Site == "Prostate") %>%
+  arrange(Age) %>% 
+  mutate(
+    NewAge = case_when(
+      Age == "15 to 44" ~ "15 to 54",
+      Age == "45 to 54" ~ "15 to 54",
+      Age == "55 to 64" ~ "55 to 74",
+      Age == "65 to 74" ~ "55 to 74",
+      Age == "75 to 99" ~ "75+",
+      .default = Age
+    ),
+    SurvivalCount = Patients * (Survival / 100)
+  ) %>%
+  group_by(Site, Route, Gender, Length, NewAge) %>%
+  summarise(Patients = sum(Patients),
+            SurvivalCount = sum(SurvivalCount),
+            Survival = SurvivalCount / Patients * 100) %>%
+  rename(Age = NewAge) %>%
+  ungroup() %>%
+  arrange(Age)
+
+p <- plot_ly()
+
+for(route_val in unique(prostateData$Route)) {
+  for(length_val in unique(prostateData$Length)) {
+    filtered_data <- prostateData %>%
+      filter(Length == length_val, Route == route_val)
+    
+    # Create different opacity/tint based on length
+    alpha_val <- ifelse(length_val == "1-year", 0.4, 1)  # Adjust based on your length values
+    
+    p <- p %>% add_bars(
+      data = filtered_data,
+      
+      y = ~Survival,
+      x = ~Age, 
+      name = paste(route_val, length_val, sep = " - "),
+      legendgroup = route_val,  # Groups legend entries by route
+      offsetgroup = route_val,  # Groups bars together
+      color = I(adjustcolor(route_colors[route_val], alpha.f = alpha_val)),
+      marker = list(color = adjustcolor(route_colors[route_val], alpha.f = alpha_val))
+    )
+  }
+}
+
+p %>% 
+   layout(
+    barmode = 'group',
+    showlegend = TRUE, 
+    yaxis = list(
+      title = "Net survival (%)",
+      zeroline = F,
+      showgrid = T, 
+      titlefont = list(family = "Poppins", color = "#000000", size = 18),
+      tickfont = list(family = "Poppins", color= "#000000", size= 14)),
+    xaxis = list(
+      title = "",
+      zeroline = F,
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      titlefont = list(family = "Poppins", color = "#000000", size = 18)),
+    title = list(text = "Prostate survival by age",
+                 font = list(family = "Progress Medium", color = "#000000",size = 28),
+                 x = 0.01),
+    legend = list(font = list(family = "Poppins")),
+    margin = list(t = 75, r = 300) 
+  )
+```
+
+Survival is similar across 15 to 54, 55 to 64, and 65 to 74 age groups and then declines steeply with age.
+
+```{r eng_prostate_age}
+prostateData <- data %>%
+  filter(Site == "Prostate") %>%
+  arrange(Age) %>%
+  mutate(
+    NewAge = case_when(
+      Age == "15 to 54" ~ "15 to 54",
+      Age == "55 to 64" ~ "55 to 74",
+      Age == "65 to 74" ~ "55 to 74",
+      Age == "75 to 84" ~ "75+",
+      Age == "85 to 99" ~ "75+",
+      .default = Age
+    ),
+    SurvivalCount = Patients * (Survival / 100)
+  ) %>%
+  group_by(Site, Route, Gender, Length, NewAge) %>%
+  summarise(Patients = sum(Patients),
+            SurvivalCount = sum(SurvivalCount),
+            Survival = SurvivalCount / Patients * 100) %>%
+  rename(Age = NewAge) %>%
+  ungroup() %>%
+  arrange(Age)
+
+p <- plot_ly()
+
+for(age_val in unique(prostateData$Age)) {
+  for(length_val in unique(prostateData$Length)) {
+    filtered_data <- prostateData %>%
+      filter(Length == length_val, Age == age_val)
+    
+    # Create different opacity/tint based on length
+    alpha_val <- ifelse(length_val == "1-year", 0.4, 1)  # Adjust based on your length values
+    
+    p <- p %>% add_bars(
+      data = filtered_data,
+      
+      y = ~Survival,
+      x = ~Route, 
+      name = paste(age_val, length_val, sep = " - "),
+      legendgroup = age_val,  # Groups legend entries by route
+      offsetgroup = age_val,  # Groups bars together
+      color = I(adjustcolor(age_colors[age_val], alpha.f = alpha_val)),
+      marker = list(color = adjustcolor(age_colors[age_val], alpha.f = alpha_val))
+    )
+  }
+}
+
+p %>% 
+  layout(
+    barmode = 'group',
+    showlegend = TRUE, 
+    yaxis = list(
+      title = "Net survival (%)",
+      zeroline = F,
+      showgrid = T, 
+      titlefont = list(family = "Poppins", color = "#000000", size = 18),
+      tickfont = list(family = "Poppins", color= "#000000", size= 14)),
+    xaxis = list(
+      title = "",
+      zeroline = F,
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      titlefont = list(family = "Poppins", color = "#000000", size = 18)),
+    title = list(text = "Prostate survival by route", 
+                 font = list(family = "Progress Medium", color = "#000000",size = 28),
+                 x = 0.01),
+    legend = list(font = list(family = "Poppins")),
+    margin = list(t = 75, r = 300) 
+  )
+  
+```
+
+## Lung
+
+Survival is low for lung cancer compared to other 3 major cancers.
+
+Seems unusual that there is an upward survival trend across USC -\> GP Referral -\> Other outpatient routes as it is the opposite for the other 3 sites. Not sure what this means in practice.
+
+```{r eng_lung_route}
+lungData <- data %>%
+  filter(Site == "Lung") %>%
+  arrange(Age) %>%
+  mutate(
+    NewAge = case_when(
+      Age == "15 to 44" ~ "15 to 54",
+      Age == "45 to 54" ~ "15 to 54",
+      Age == "15 to 54" ~ "15 to 54",
+      Age == "55 to 64" ~ "55 to 74",
+      Age == "65 to 74" ~ "55 to 74",
+      Age == "75 to 99" ~ "75+",
+      .default = Age
+    ),
+    SurvivalCount = Patients * (Survival / 100)
+  ) %>%
+  group_by(Site, Route, Gender, Length, NewAge) %>%
+  summarise(Patients = sum(Patients),
+            SurvivalCount = sum(SurvivalCount),
+            Survival = SurvivalCount / Patients * 100) %>%
+  rename(Age = NewAge) %>%
+  ungroup() %>%
+  arrange(Age)
+
+p <- plot_ly()
+
+for(route_val in unique(lungData$Route)) {
+  for(length_val in unique(lungData$Length)) {
+    filtered_data <- lungData %>%
+      filter(Length == length_val, Route == route_val)
+    
+    # Create different opacity/tint based on length
+    alpha_val <- ifelse(length_val == "1-year", 0.4, 1)  # Adjust based on your length values
+    
+    p <- p %>% add_bars(
+      data = filtered_data,
+      
+      y = ~Survival,
+      x = ~Age, 
+      name = paste(route_val, length_val, sep = " - "),
+      legendgroup = route_val,  # Groups legend entries by route
+      offsetgroup = route_val,  # Groups bars together
+      color = I(adjustcolor(route_colors[route_val], alpha.f = alpha_val)),
+      marker = list(color = adjustcolor(route_colors[route_val], alpha.f = alpha_val))
+    )
+  }
+}
+
+p %>% 
+    layout(
+    barmode = 'group',
+    showlegend = TRUE, 
+    yaxis = list(
+      title = "Net survival (%)", 
+      zeroline = F,
+      showgrid = T, 
+      titlefont = list(family = "Poppins", color = "#000000", size = 18),
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      range= c(0, 100)),
+    xaxis = list(
+      title = "", 
+      zeroline = F,
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      titlefont = list(family = "Poppins", color = "#000000", size = 18)),
+    title = list(text = "Lung survival by age", 
+                 font = list(family = "Progress Medium", color = "#000000",size = 28),
+                 x = 0.01),
+    legend = list(font = list(family = "Poppins")),
+    margin = list(t = 75, r = 300) 
+  )
+```
+
+```{r eng_lung_age}
+lungData <- data %>%
+  filter(Site == "Lung") %>%
+  arrange(Age) %>%
+  mutate(
+    NewAge = case_when(
+      Age == "15 to 44" ~ "15 to 54",
+      Age == "45 to 54" ~ "15 to 54",
+      Age == "15 to 54" ~ "15 to 54",
+      Age == "55 to 64" ~ "55 to 74",
+      Age == "65 to 74" ~ "55 to 74",
+      Age == "75 to 99" ~ "75+",
+      .default = Age
+    ),
+    SurvivalCount = Patients * (Survival / 100)
+  ) %>%
+  group_by(Site, Route, Gender, Length, NewAge) %>%
+  summarise(Patients = sum(Patients),
+            SurvivalCount = sum(SurvivalCount),
+            Survival = SurvivalCount / Patients * 100) %>%
+  rename(Age = NewAge) %>%
+  ungroup() %>%
+  arrange(Age)
+
+p <- plot_ly()
+
+for(age_val in unique(lungData$Age)) {
+  for(length_val in unique(lungData$Length)) {
+    filtered_data <- lungData %>%
+      filter(Length == length_val, Age == age_val)
+    
+    # Create different opacity/tint based on length
+    alpha_val <- ifelse(length_val == "1-year", 0.4, 1)  # Adjust based on your length values
+    
+    p <- p %>% add_bars(
+      data = filtered_data,
+      
+      y = ~Survival,
+      x = ~Route, 
+      name = paste(age_val, length_val, sep = " - "),
+      legendgroup = age_val,  # Groups legend entries by route
+      offsetgroup = age_val,  # Groups bars together
+      color = I(adjustcolor(age_colors[age_val], alpha.f = alpha_val)),
+      marker = list(color = adjustcolor(age_colors[age_val], alpha.f = alpha_val))
+    )
+  }
+}
+
+p %>% 
+  layout(
+    barmode = 'group',
+    showlegend = TRUE, 
+    yaxis = list(
+      title = "Net survival (%)", 
+      zeroline = F,
+      showgrid = T, 
+      titlefont = list(family = "Poppins", color = "#000000", size = 18),
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      range= c(0, 100)),
+    xaxis = list(
+      title = "", 
+      zeroline = F,
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      titlefont = list(family = "Poppins", color = "#000000", size = 18)),
+    title = list(
+      text = "Lung survival by route", 
+      font = list(family = "Progress Medium", color = "#000000",size = 28),
+      x = 0.01),
+    legend = list(font = list(family = "Poppins")),
+    margin = list(t = 75, r = 300) 
+  )
+
+```
+
+# Northern Ireland 3 year survival
+
+::: callout-note
+-   Northern Ireland only has 3 year survival, not 1 and 5 year as requested.
+
+-   The youngest age grouping available is 0 to 54, instead of 15 to 54.
+:::
+
+```{r NI_data}
+NIData <- openxlsx::read.xlsx('Northern Ireland Survival by Route and Age.xlsx', sheet = "Sheet1") %>%
+  pivot_longer(cols = 3:10,
+               values_to = "value",
+               names_to = "string") %>%
+  mutate(Age = str_split_i(string, i = 1, pattern = "_"),
+         Name = str_split_i(string, i = 2, pattern = "_")) %>%
+  select(-string) %>%
+  pivot_wider(names_from = Name,
+              values_from = value) %>%
+  rename(Patients = n,
+         Survival = Percent)
+
+#combine 55-64 and 65-74 age groups 
+NIData <- NIData %>%
+  mutate(
+    NewAge = case_when(
+      Age == "55-64" ~ "55-74",
+      Age == "65-74" ~ "55-74",
+      .default = Age
+    ),
+    SurvivalCount = Patients * (Survival / 100)
+  ) %>%
+  group_by(Site, Route, NewAge) %>%
+  summarise(Patients = sum(Patients),
+            SurvivalCount = sum(SurvivalCount),
+            Survival = SurvivalCount / Patients * 100) %>%
+  rename(Age = NewAge) %>%
+  ungroup() %>%
+  select(-SurvivalCount)
+
+AllAges <- NIData %>%
+  mutate(SurvivalCount = Patients * Survival/100) %>%
+  group_by(Route, Site) %>%
+  summarise(Patients = sum(Patients, na.rm = TRUE),
+      SurvivalCount = sum(SurvivalCount, na.rm = TRUE),
+      Survival = SurvivalCount / Patients * 100) %>%
+  ungroup() %>%
+  mutate(Age = "All ages") %>%
+  select(-SurvivalCount)
+
+NIData <- rbind(NIData, AllAges)
+
+AllRoutes <- NIData %>%
+  mutate(SurvivalCount = Patients * Survival/100) %>%
+  group_by(Age, Site) %>%
+  summarise(Patients = sum(Patients, na.rm = TRUE),
+      SurvivalCount = sum(SurvivalCount, na.rm = TRUE),
+      Survival = SurvivalCount / Patients * 100) %>%
+  ungroup() %>%
+  mutate(Route = "All routes") %>%
+  select(-SurvivalCount)
+
+NIData <- rbind(NIData, AllRoutes)
+
+NI_route_colors <- c(
+  "1 Screening"              = "#374c80", 
+  "2 Red Flag"               = "#7a5195",
+  "3 GP Referral"            = "#bc5090", 
+  "4 Outpatient"             = "#ef5675", 
+  "5 Inpatient"              = "#ff764a", 
+  "6 Emergency Presentation" = "#ffa600", 
+  "All routes"               = "#003f5c"  
+)
+NI_age_colors <- c(
+  "0-54" = "#BCE4FA", 
+  "55-74" = "#009cee",
+  "75+"      = "#005b85",
+  "All ages" = "#00007e"
+)
+# NI_age_colors <- c(
+#   "0-54"     = "#BCE4FA", 
+#   "55-64"    = "#5bc5f2",
+#   "65-74"    = "#009cee",
+#   "75+"      = "#005b85",
+#   "All ages" = "#00007e"
+# )
+```
+
+## All cancers
+
+3 year survival decreases with later pathway presentation and older age.
+
+In 0 - 54 age group, 3 year net survival nearly halves from 86.3% (red flag) to 51.3% (emergency presentation) whereas in the over 75 age group 3 year net survival falls from 64.8% (red flag) to 16.6% (emergency presentation).
+
+::: {.callout-warning appearance="simple"}
+I've avoided comparing to screening here despite it being in the chart because I don't feel it is really applicable to all cancers.
+:::
+
+```{r ni_allcancers_route}
+AllCancers <- NIData %>%
+  filter(Site == "All cancers") %>%
+  arrange(Age) 
+
+p <- plot_ly()
+
+for(route_val in unique(AllCancers$Route)) {
+  # for(length_val in unique(AllCancers$Length)) {
+    filtered_data <- AllCancers %>%
+      filter(Route == route_val)
+    
+    # Create different opacity/tint based on length
+    # alpha_val <- ifelse(length_val == "1-year", 0.4, 1)  # Adjust based on your length values
+    
+    p <- p %>% add_bars(
+      data = filtered_data,
+      y = ~Survival,
+      x = ~Age, 
+      name = paste(route_val, sep = " - "),
+      legendgroup = route_val,  # Groups legend entries by route
+      offsetgroup = route_val,  # Groups bars together
+      color = I(NI_route_colors[route_val]),
+      marker = list(NI_color = NI_route_colors[route_val])
+    )
+  
+}
+
+p %>% 
+  layout(
+    barmode = 'group',
+    showlegend = TRUE, 
+    yaxis = list(
+      title = "Net survival (%)", 
+      zeroline = F,
+      showgrid = T, 
+      titlefont = list(family = "Poppins", color = "#000000", size = 18),
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      range= c(0, 100)),
+    xaxis = list(
+      title = "", 
+      zeroline = F,
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      titlefont = list(family = "Poppins", color = "#000000", size = 18)),
+    title = list(
+      text = "All cancer survival by route", 
+      font = list(family = "Progress Medium", color = "#000000",size = 28),
+      x = 0.01),
+    legend = list(font = list(family = "Poppins")),
+    margin = list(t = 75, r = 300) 
+  )
+```
+
+```{r ni_allcancers_age}
+AllCancers <- NIData %>%
+  filter(Site == "All cancers") 
+
+
+p <- plot_ly()
+
+for(age_val in unique(AllCancers$Age)) {
+  # for(length_val in unique(AllCancers$Length)) {
+    filtered_data <- AllCancers %>%
+      filter(#Length == length_val, 
+             Age == age_val)
+    
+    # Create different opacity/tint based on length
+    # alpha_val <- ifelse(length_val == "1-year", 0.4, 1)  # Adjust based on your length values
+    
+    p <- p %>% add_bars(
+      data = filtered_data,
+      
+      y = ~Survival,
+      x = ~Route, 
+      name = paste(age_val, 
+                   # length_val, 
+                   sep = " - "),
+      legendgroup = age_val,  # Groups legend entries by route
+      offsetgroup = age_val,  # Groups bars together
+      color = I(NI_age_colors[age_val]),
+      marker = list(color = NI_age_colors[age_val])
+    )
+  # }
+}
+
+p %>% 
+  layout(
+    barmode = 'group',
+    showlegend = TRUE, 
+    yaxis = list(
+      title = "Net survival (%)", 
+      zeroline = F,
+      showgrid = T, 
+      titlefont = list(family = "Poppins", color = "#000000", size = 18),
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      range= c(0, 100)),
+    xaxis = list(
+      title = "", 
+      zeroline = F,
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      titlefont = list(family = "Poppins", color = "#000000", size = 18)),
+    title = list(
+      text = "All cancers 3-year survival by route", 
+      font = list(family = "Progress Medium", color = "#000000", weight = 500, size = 28),
+      x = 0.01),
+    legend = list(font = list(family = "Poppins")),
+    margin = list(t = 75, r = 300) 
+  )
+```
+
+## Bowel
+
+For red flag and GP referral routes, survival is similar in 0-54 year olds and 55-74 tear olds.
+
+The benefit of screening is evident, with higher survival seen in anyone who is diagnosed via this route, and higher survival than younger groups who are diagnosed via a different route.
+
+Being diagnosed via a later pathway route has a bigger negative impact on older people than younger people. This is especially true for the emergency presentation route where 3 year survival falls from 69.8% in the 0 to 54 age group to 25.8% in the 75+ age group.
+
+```{r ni_bowel_route}
+BowelCancer <- NIData %>%
+  filter(Site == "Colorectal") %>%
+  arrange(Age) 
+
+p <- plot_ly()
+
+for(route_val in unique(BowelCancer$Route)) {
+    filtered_data <- BowelCancer %>%
+      filter(Route == route_val)
+    
+    # Create different opacity/tint based on length
+    # alpha_val <- ifelse(length_val == "1-year", 0.4, 1)  # Adjust based on your length values
+    
+    p <- p %>% add_bars(
+      data = filtered_data,
+      y = ~Survival,
+      x = ~Age, 
+      name = paste(route_val, sep = " - "),
+      legendgroup = route_val,  # Groups legend entries by route
+      offsetgroup = route_val,  # Groups bars together
+      color = I(NI_route_colors[route_val]),
+      marker = list(NI_color = NI_route_colors[route_val])
+    )
+  
+}
+
+p %>% 
+  layout(
+    barmode = 'group',
+    showlegend = TRUE, 
+    yaxis = list(
+      title = "Net survival (%)", 
+      zeroline = F,
+      showgrid = T, 
+      titlefont = list(family = "Poppins", color = "#000000", size = 18),
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      range= c(0, 100)),
+    xaxis = list(
+      title = "", 
+      zeroline = F,
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      titlefont = list(family = "Poppins", color = "#000000", size = 18)),
+    title = list(
+      text = "Lung cancer survival by route", 
+      font = list(family = "Progress Medium", color = "#000000",size = 28),
+      x = 0.01),
+    legend = list(font = list(family = "Poppins")),
+    margin = list(t = 75, r = 300) 
+  )
+```
+
+```{r ni_bowel_age}
+Bowel <- NIData %>%
+  filter(Site == "Colorectal") 
+
+
+p <- plot_ly()
+
+for(age_val in unique(Bowel$Age)) {
+    filtered_data <- Bowel %>%
+      filter(Age == age_val)
+    
+    p <- p %>% add_bars(
+      data = filtered_data,
+      
+      y = ~Survival,
+      x = ~Route, 
+      name = paste(age_val, sep = " - "),
+      legendgroup = age_val,  # Groups legend entries by route
+      offsetgroup = age_val,  # Groups bars together
+      color = I(NI_age_colors[age_val]),
+      marker = list(color = NI_age_colors[age_val])
+    )
+  # }
+}
+
+p %>% 
+  layout(
+    barmode = 'group',
+    showlegend = TRUE, 
+    yaxis = list(
+      title = "Net survival (%)", 
+      zeroline = F,
+      showgrid = T, 
+      titlefont = list(family = "Poppins", color = "#000000", size = 18),
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      range= c(0, 100)),
+    xaxis = list(
+      title = "", 
+      zeroline = F,
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      titlefont = list(family = "Poppins", color = "#000000", size = 18)),
+    title = list(
+      text = "Bowel cancer 3-year survival by route", 
+      font = list(family = "Progress Medium", color = "#000000", weight = 500, size = 28),
+      x = 0.01),
+    legend = list(font = list(family = "Poppins")),
+    margin = list(t = 75, r = 300) 
+  )
+```
+
+## Lung
+
+There is an unusual upward survival trend across red flag -\> GP referral -\> outpatient routes (the opposite for the other 3 sites). Not sure what this means in practice.
+
+As with other cancer sites, there is a greater fall in survival as in later pathway routes of diagnosis as people get older compared to earlier pathway routes of diagnosis
+
+```{r ni_lung_route}
+LungCancer <- NIData %>%
+  filter(Site == "Lung") %>%
+  arrange(Age) 
+
+p <- plot_ly()
+
+for(route_val in unique(LungCancer$Route)) {
+    filtered_data <- LungCancer %>%
+      filter(Route == route_val)
+    
+    # Create different opacity/tint based on length
+    # alpha_val <- ifelse(length_val == "1-year", 0.4, 1)  # Adjust based on your length values
+    
+    p <- p %>% add_bars(
+      data = filtered_data,
+      y = ~Survival,
+      x = ~Age, 
+      name = paste(route_val, sep = " - "),
+      legendgroup = route_val,  # Groups legend entries by route
+      offsetgroup = route_val,  # Groups bars together
+      color = I(NI_route_colors[route_val]),
+      marker = list(NI_color = NI_route_colors[route_val])
+    )
+  
+}
+
+p %>% 
+  layout(
+    barmode = 'group',
+    showlegend = TRUE, 
+    yaxis = list(
+      title = "Net survival (%)", 
+      zeroline = F,
+      showgrid = T, 
+      titlefont = list(family = "Poppins", color = "#000000", size = 18),
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      range= c(0, 100)),
+    xaxis = list(
+      title = "", 
+      zeroline = F,
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      titlefont = list(family = "Poppins", color = "#000000", size = 18)),
+    title = list(
+      text = "Lung cancer survival by route", 
+      font = list(family = "Progress Medium", color = "#000000",size = 28),
+      x = 0.01),
+    legend = list(font = list(family = "Poppins")),
+    margin = list(t = 75, r = 300) 
+  )
+```
+
+```{r ni_lung_age}
+Lung <- NIData %>%
+  filter(Site == "Lung") 
+
+
+p <- plot_ly()
+
+for(age_val in unique(Lung$Age)) {
+    filtered_data <- Lung %>%
+      filter(Age == age_val)
+    
+    p <- p %>% add_bars(
+      data = filtered_data,
+      
+      y = ~Survival,
+      x = ~Route, 
+      name = paste(age_val, sep = " - "),
+      legendgroup = age_val,  # Groups legend entries by route
+      offsetgroup = age_val,  # Groups bars together
+      color = I(NI_age_colors[age_val]),
+      marker = list(color = NI_age_colors[age_val])
+    )
+  # }
+}
+
+p %>% 
+  layout(
+    barmode = 'group',
+    showlegend = TRUE, 
+    yaxis = list(
+      title = "Net survival (%)", 
+      zeroline = F,
+      showgrid = T, 
+      titlefont = list(family = "Poppins", color = "#000000", size = 18),
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      range= c(0, 100)),
+    xaxis = list(
+      title = "", 
+      zeroline = F,
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      titlefont = list(family = "Poppins", color = "#000000", size = 18)),
+    title = list(
+      text = "Lung cancer 3-year survival by route", 
+      font = list(family = "Progress Medium", color = "#000000", weight = 500, size = 28),
+      x = 0.01),
+    legend = list(font = list(family = "Poppins")),
+    margin = list(t = 75, r = 300) 
+  )
+```
+
+## Breast
+
+Similar to Bowel, screening shows a marked increase in survival across all age groups.
+
+As with other cancer sites, older people diagnosed via a later cancer pathway route have poorer 3 year survival than younger people.
+
+```{r ni_breast_route}
+BreastCancer <- NIData %>%
+  filter(Site == "Breast") %>%
+  arrange(Age) 
+
+p <- plot_ly()
+
+for(route_val in unique(BreastCancer$Route)) {
+    filtered_data <- BreastCancer %>%
+      filter(Route == route_val)
+    
+    # Create different opacity/tint based on length
+    # alpha_val <- ifelse(length_val == "1-year", 0.4, 1)  # Adjust based on your length values
+    
+    p <- p %>% add_bars(
+      data = filtered_data,
+      y = ~Survival,
+      x = ~Age, 
+      name = paste(route_val, sep = " - "),
+      legendgroup = route_val,  # Groups legend entries by route
+      offsetgroup = route_val,  # Groups bars together
+      color = I(NI_route_colors[route_val]),
+      marker = list(NI_color = NI_route_colors[route_val])
+    )
+  
+}
+
+p %>% 
+  layout(
+    barmode = 'group',
+    showlegend = TRUE, 
+    yaxis = list(
+      title = "Net survival (%)", 
+      zeroline = F,
+      showgrid = T, 
+      titlefont = list(family = "Poppins", color = "#000000", size = 18),
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      range= c(0, 100)),
+    xaxis = list(
+      title = "", 
+      zeroline = F,
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      titlefont = list(family = "Poppins", color = "#000000", size = 18)),
+    title = list(
+      text = "Breast cancer survival by route", 
+      font = list(family = "Progress Medium", color = "#000000",size = 28),
+      x = 0.01),
+    legend = list(font = list(family = "Poppins")),
+    margin = list(t = 75, r = 300) 
+  )
+```
+
+```{r ni_breast_age}
+Breast <- NIData %>%
+  filter(Site == "Breast") 
+
+
+p <- plot_ly()
+
+for(age_val in unique(Breast$Age)) {
+    filtered_data <- Breast %>%
+      filter(Age == age_val)
+    
+    p <- p %>% add_bars(
+      data = filtered_data,
+      
+      y = ~Survival,
+      x = ~Route, 
+      name = paste(age_val, sep = " - "),
+      legendgroup = age_val,  # Groups legend entries by route
+      offsetgroup = age_val,  # Groups bars together
+      color = I(NI_age_colors[age_val]),
+      marker = list(color = NI_age_colors[age_val])
+    )
+  # }
+}
+
+p %>% 
+  layout(
+    barmode = 'group',
+    showlegend = TRUE, 
+    yaxis = list(
+      title = "Net survival (%)", 
+      zeroline = F,
+      showgrid = T, 
+      titlefont = list(family = "Poppins", color = "#000000", size = 18),
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      range= c(0, 100)),
+    xaxis = list(
+      title = "", 
+      zeroline = F,
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      titlefont = list(family = "Poppins", color = "#000000", size = 18)),
+    title = list(
+      text = "Breast cancer 3-year survival by route", 
+      font = list(family = "Progress Medium", color = "#000000", weight = 500, size = 28),
+      x = 0.01),
+    legend = list(font = list(family = "Poppins")),
+    margin = list(t = 75, r = 300) 
+  )
+```
+
+## Prostate
+
+::: {.callout-important appearance="simple"}
+Prostate has different age categories to the rest of NI cancer sites
+:::
+
+```{r ni_prostate_data}
+NIProstate <- openxlsx::read.xlsx('Northern Ireland Survival by Route and Age.xlsx', sheet = "Sheet2") %>%
+  pivot_longer(cols = 3:10,
+               values_to = "value",
+               names_to = "string") %>%
+  mutate(Age = str_split_i(string, i = 1, pattern = "_"),
+         Name = str_split_i(string, i = 2, pattern = "_")) %>%
+  select(-string) %>%
+  pivot_wider(names_from = Name,
+              values_from = value) %>%
+  rename(Patients = n,
+         Survival = Percent)
+
+AllAges <- NIProstate %>%
+  mutate(SurvivalCount = Patients * Survival/100) %>%
+  group_by(Route, Site) %>%
+  summarise(Patients = sum(Patients, na.rm = TRUE),
+      SurvivalCount = sum(SurvivalCount, na.rm = TRUE),
+      Survival = SurvivalCount / Patients * 100) %>%
+  ungroup() %>%
+  mutate(Age = "All ages") %>%
+  select(-SurvivalCount)
+
+NIProstate <- rbind(NIProstate, AllAges)
+
+AllRoutes <- NIProstate %>%
+  mutate(SurvivalCount = Patients * Survival/100) %>%
+  group_by(Age, Site) %>%
+  summarise(Patients = sum(Patients, na.rm = TRUE),
+      SurvivalCount = sum(SurvivalCount, na.rm = TRUE),
+      Survival = SurvivalCount / Patients * 100) %>%
+  ungroup() %>%
+  mutate(Route = "All routes") %>%
+  select(-SurvivalCount)
+
+NIProstate <- rbind(NIProstate, AllRoutes)
+
+NIProstate <- NIProstate %>% arrange(Age)
+
+NIP_route_colors <- c(
+  "1 Screening"              = "#374c80", 
+  "2 Red Flag"               = "#7a5195",
+  "3 GP Referral"            = "#bc5090", 
+  "4 Outpatient"             = "#ef5675", 
+  "5 Inpatient"              = "#ff764a", 
+  "6 Emergency Presentation" = "#ffa600", 
+  "All routes"               = "#003f5c"  
+)
+
+NIP_age_colors <- c(
+  "0-64"     = "#BCE4FA", 
+  "65-74"    = "#5bc5f2",
+  "75-84"    = "#009cee",
+  "85+"      = "#005b85",
+  "All ages" = "#00007e"
+)
+```
+
+Survival for prostate is high if not diagnosed via emergency presentation route.
+
+```{r ni_prostate_route}
+p <- plot_ly()
+
+for(route_val in unique(NIProstate$Route)) {
+    filtered_data <- NIProstate %>%
+      filter(Route == route_val)
+    
+    # Create different opacity/tint based on length
+    # alpha_val <- ifelse(length_val == "1-year", 0.4, 1)  # Adjust based on your length values
+    
+    p <- p %>% add_bars(
+      data = filtered_data,
+      y = ~Survival,
+      x = ~Age, 
+      name = paste(route_val, sep = " - "),
+      legendgroup = route_val,  # Groups legend entries by route
+      offsetgroup = route_val,  # Groups bars together
+      color = I(NI_route_colors[route_val]),
+      marker = list(NI_color = NI_route_colors[route_val])
+    )
+  
+}
+
+p %>% 
+  layout(
+    barmode = 'group',
+    showlegend = TRUE, 
+    yaxis = list(
+      title = "Net survival (%)", 
+      zeroline = F,
+      showgrid = T, 
+      titlefont = list(family = "Poppins", color = "#000000", size = 18),
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      range= c(0, 100)),
+    xaxis = list(
+      title = "", 
+      zeroline = F,
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      titlefont = list(family = "Poppins", color = "#000000", size = 18)),
+    title = list(
+      text = "Prostate cancer survival by route", 
+      font = list(family = "Progress Medium", color = "#000000",size = 28),
+      x = 0.01),
+    legend = list(font = list(family = "Poppins")),
+    margin = list(t = 75, r = 300) 
+  )
+```
+
+```{r ni_prostate_age}
+p <- plot_ly()
+
+for(age_val in unique(NIProstate$Age)) {
+  filtered_data <- NIProstate %>%
+    filter(Age == age_val)
+  
+  p <- p %>% add_bars(
+    data = filtered_data,
+    
+    y = ~ Survival,
+    x = ~ Route,
+    name = paste(age_val, sep = " - "),
+    legendgroup = age_val,
+    # Groups legend entries by route
+    offsetgroup = age_val,
+    # Groups bars together
+    color = I(NIP_age_colors[age_val]),
+    marker = list(color = NIP_age_colors[age_val])
+  )
+}
+
+p %>% 
+  layout(
+    barmode = 'group',
+    showlegend = TRUE, 
+    yaxis = list(
+      title = "Net survival (%)", 
+      zeroline = F,
+      showgrid = T, 
+      titlefont = list(family = "Poppins", color = "#000000", size = 18),
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      range= c(0, 100)),
+    xaxis = list(
+      title = "", 
+      zeroline = F,
+      tickfont = list(family = "Poppins", color= "#000000", size= 14),
+      titlefont = list(family = "Poppins", color = "#000000", size = 18)),
+    title = list(
+      text = "Prostate cancer 3-year survival by route", 
+      font = list(family = "Progress Medium", color = "#000000", weight = 500, size = 28),
+      x = 0.01),
+    legend = list(font = list(family = "Poppins")),
+    margin = list(t = 75, r = 300) 
+  )
+```
+
+::: {style="border: 2px black solid; background: white; padding: 24px;"}
+# Data sources:
+
+#### England
+
+[NDRS Routes to Diagnosis dashboard](https://nhsd-ndrs.shinyapps.io/routes_to_diagnosis/) (2016 - 2020)
+
+#### Northern Ireland
+
+[Pathways to a Cancer Diagnosis 2012 to 2016](https://bso.hscni.net/wp-content/uploads/2024/06/Routes-to-Diagnosis-Report-Main-Report-Jan-2020.pdf)
+:::

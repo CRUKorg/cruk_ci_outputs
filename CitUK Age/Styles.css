@@ -1,0 +1,49 @@
+.quarto-layout-cell {
+  display: flex
+}
+
+h1, .h1, h2, .h2{
+  color: inherit;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  font-family: Progress Medium;
+  font-weight: 500 !important;
+}
+
+h1, .h1 {
+  font-size: 3rem;
+}
+  
+h2, .h2 {
+  font-size: 2.8rem;
+}
+
+.feature-block {
+  display: flex; 
+  margin-bottom: 16px;
+  align-items: center;
+  gap: 2vw;
+}
+
+.text-block {
+  flex: 1; 
+  padding: 16px; 
+  align-content: center; 
+  border: 2px solid black;
+  height: fit-content;
+}
+
+.graph-block {
+  flex: 2; 
+  padding: 16px;
+}
+/*
+.quarto-title-block .quarto-title-banner {
+  background-image: url(ci-logo.svg);
+  background-size: 300px;
+  background-position: Right;
+  background-repeat: no-repeat;
+  padding-left: 10px;
+  background-origin: content-box;
+}
+*/
