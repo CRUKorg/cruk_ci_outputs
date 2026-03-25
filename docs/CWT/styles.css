@@ -1,0 +1,23 @@
+.section {
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.section:last-child {
+  border-bottom: none;
+}
+
+.statement-box {
+  border: 2px solid black; padding: 16px 32px;
+  gap: 10px;
+  flex-direction: column;
+  display: flex;
+  margin-bottom: 1rem;
+}
+.statement-box p {
+  margin: 0;
+}
+.statement {
+  font-family: Poppins Medium;
+}
