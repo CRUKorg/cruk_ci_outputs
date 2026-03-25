@@ -370,7 +370,7 @@ suspected cancer referrals from July 2023 to June 2024 compared with the
 projected number of referrals estimated in July 2028 to June 2030.
 ]
 )
-#block(stroke: 2pt + rgb("#000000"), inset: (x: 12pt, y: 10pt), radius: 2pt, width: 100%)[By 2030 there are expected to be 23% more urgent cancer referrals each
+#block(stroke: 2pt + rgb("#000000"), inset: (x: 24pt, y: 16pt), radius: 0pt, width: 100%)[By 2030 there are expected to be 23% more urgent cancer referrals each
 year in England, up from around 3,250,000 in 2025 to around 4,000,000
 referrals.#footnote[This statement only covers urgent suspected cancer,
 which is different to the later FDS numbers which have a wider inclusion
@@ -399,8 +399,18 @@ Data source: `FDS tab of the SST dashboard`
 #grid(columns: (1fr, 1fr), gutter: 2em, align: top,
 [#set par(justify: true)
 NHS England has the Faster Diagnosis Standard (FDS) which focuses on
-timely diagnosis. The target is that 80%\[^3\] of people referred should
-not wait more than 28 days from referral to finding out whether you
+timely diagnosis. The target is that 80%#footnote[This statement only
+covers urgent suspected cancer, which is different to the later FDS
+numbers which have a wider inclusion criteria. \
+\
+This metric was previously treated as the total number of USC referrals.
+Technically I think it is slightly less, and is instead the number of
+USC referrals that have attended their first outpatient appointment. For
+example, 2022/23 USCR data shows 2,889,406 patients, whereas USC
+referral numbers list 2,896,111. This is a small difference, and it is
+reasonable to expect all referrals to have an outpatient appointment
+during their care.];\[^3\] of people referred should not wait more than
+28 days from referral to finding out whether you
 ],
 [#set par(justify: true)
 have cancer or not. The standard includes urgent suspected cancer
@@ -413,7 +423,7 @@ metric.
 ]
 #block[
 ]
-#block(stroke: 2pt + rgb("#000000"), inset: (x: 12pt, y: 10pt), radius: 2pt, width: 100%)[By 2030 there are expected to be 26.2% more urgent cancer referrals
+#block(stroke: 2pt + rgb("#000000"), inset: (x: 24pt, y: 16pt), radius: 0pt, width: 100%)[By 2030 there are expected to be 26.2% more urgent cancer referrals
 receiving a diagnosis or having cancer ruled out, each year in England,
 up from around 3,360,000 in 2025 to around 4,250,000.
 
@@ -455,6 +465,11 @@ appropriate.
 
 === Linear modelling
 <linear-modelling>
+With the linear regression model, there is a clear sustained increase in
+number of patients starting treatment after October 2023. If we did use
+this model, then the final numbers would likely underestimate the actual
+number of patients of the next 5 years.
+
 #block[
 ]
 #block[
@@ -465,11 +480,6 @@ appropriate.
 
 ]
 ]
-With the linear regression model, there is a clear sustained increase in
-number of patients starting treatment after October 2023. If we did use
-this model, then the final numbers would likely underestimate the actual
-number of patients of the next 5 years.
-
 === Poisson modelling
 <poisson-modelling>
 There are different trends present for each referral route, so I have
@@ -556,7 +566,7 @@ models, and then sum the results of those models which is the
 
 #block[
 ]
-#block(stroke: 2pt + rgb("#000000"), inset: (x: 12pt, y: 10pt), radius: 2pt, width: 100%)[12 month average performance (69.2%)
+#block(stroke: 2pt + rgb("#000000"), inset: (x: 24pt, y: 16pt), radius: 0pt, width: 100%)[12 month average performance (69.2%)
 
 Nearly 337,000 cancer patients in England are estimated to begin
 treatment later than they should over the next five years if current
