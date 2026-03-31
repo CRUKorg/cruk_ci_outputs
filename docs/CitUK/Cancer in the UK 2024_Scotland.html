@@ -2168,7 +2168,7 @@ background-size: cover;
 </style>
 
 
-<style type="text/css">.section {margin-bottom: 3rem;padding-bottom: 2rem;border-bottom: 1px solid #e0e0e0;}.section:last-child {border-bottom: none;}.statement-box {border: 2px solid black; padding: 16px 32px;gap: 10px;flex-direction: column;display: flex;margin-bottom: 1rem;}.statement-box p {margin: 0;}.statement {font-family: Poppins Medium;}h1.title {font-family: Progress Medium;font-weight: normal;font-size: 64px;}h1, h2, h3, h4 {font-family: Progress Medium;font-weight: normal;border-bottom: none;}.quarto-title {padding-bottom: 4em;background: white;color: black;margin-bottom: -2.5em;margin-bottom: -2.5em;padding: 24px;padding-bottom: 4em;position: relative;top: 8em;}h1.title {color: black;}.quarto-title-banner .quarto-title .title {font-weight: 600;font-weight: 500;}.subtitle {font-size: 28px;font-family: Poppins Medium;}.quarto-title-block .quarto-title-banner {background-size: cover;background-size: contain;}</style>
+<style type="text/css">.section {margin-bottom: 3rem;padding-bottom: 2rem;border-bottom: 1px solid #e0e0e0;}.section:last-child {border-bottom: none;}.statement-box {border: 2px solid black; padding: 16px 32px;gap: 10px;flex-direction: column;display: flex;margin-bottom: 1rem;}.statement-box p {margin: 0;}.statement {font-family: Poppins Medium;}h1.title {font-family: Progress Medium;font-weight: normal;font-size: 64px;}h1, h2, h3, h4 {font-family: Progress Medium;font-weight: normal;border-bottom: none;}.quarto-title {padding-bottom: 4em;background: white;color: black;margin-bottom: -2.5em;margin-bottom: -2.5em;padding: 24px;padding-bottom: 4em;position: relative;top: 8em;}h1.title {color: black;}.quarto-title-banner .quarto-title .title {font-weight: 600;font-weight: 500;}.subtitle {font-size: 28px;font-family: Poppins Medium;}.quarto-title-block .quarto-title-banner {background-size: cover;background-size: contain;}.summary {padding: 4px 24px 7px 24px;background: #e4e7e8;margin-bottom: 1.5em;}.policy-call {font-family: Poppins Medium;padding: 16px 24px;background: #00007e;color: #fff;margin-bottom: 1.5em;margin-top: 2.5em;}.quarto-title-banner .subtitle::after {content: '';display: block;border-top: 8px solid;margin-top: 0.75em;width: 2em;border-color: black;margin-top: 3rem;}</style>
 </head>
 
 <body class="quarto-light">
@@ -2201,7 +2201,7 @@ background-size: cover;
   <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary">Summary</a></li>
   </ul></li>
   </ul>
-<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="Cancer in the UK 2024_Scotland.pdf"><i class="bi bi-file-pdf"></i>Typst</a></li></ul></div><div class="quarto-code-links"><h2>Code Links</h2><ul><li><a href="https://github.com/CRUKorg/cruk_ci_cross_pathway/" target="_blank"><i class="bi bi-github"></i>GitHub Repo</a></li></ul></div></nav>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="Cancer in the UK 2024_Scotland.pdf"><i class="bi bi-file-pdf"></i>Download PDF</a></li><li><a href="Cancer in the UK 2024_Scotland.pdf"><i class="bi bi-file-pdf"></i>Typst</a></li></ul></div><div class="quarto-code-links"><h2>Code Links</h2><ul><li><a href="https://github.com/CRUKorg/cruk_ci_cross_pathway/" target="_blank"><i class="bi bi-github"></i>GitHub Repo</a></li></ul></div></nav>
 </div>
 <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
 </div>
@@ -2254,6 +2254,11 @@ background-size: cover;
 </div>
 </section>
 </div>
+<script>
+document.querySelectorAll('.quarto-alternate-formats a').forEach(a => {
+  if (a.textContent.trim().toLowerCase() === 'typst') a.closest('li').remove();
+});
+</script>
 </section>
 
 </main>
